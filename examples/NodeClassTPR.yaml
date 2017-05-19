@@ -1,0 +1,7 @@
+apiVersion: extensions/v1beta1
+kind: ThirdPartyResource
+description: "A specification of an NodeClass"
+metadata:
+  name: "node-class.nodeset.k8s.io"
+versions:
+  - name: v1alpha1

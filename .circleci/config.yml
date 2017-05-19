@@ -1,0 +1,12 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: circleci/golang:1.8
+    working_directory: /go/src/github.com/kube-node/kube-machine
+    steps:
+      - checkout
+      - run: go get -u github.com/Masterminds/glide
+      - run: glide install --strip-vendor
+      - run: git checkout -- vendor/
+      - run: go test -v $(go list ./... | grep -v /vendor/)

@@ -1,0 +1,85 @@
+apiVersion: "nodeset.k8s.io/v1alpha1"
+kind: NodeClass
+metadata:
+  name: kubermatic-coreos-worker-v1-6-4-0
+nodeController: kube-machine
+config:
+  dockerMachineFlags:
+    digitalocean-access-token: "YOUR_DO_TOKEN"
+    digitalocean-region: "fra1"
+    digitalocean-ssh-user: "core"
+    digitalocean-image: "coreos-stable"
+    digitalocean-size: "2gb"
+  provider: "digitalocean"
+  provisioning:
+    commands:
+      - "sudo systemctl daemon-reload"
+      - "sudo systemctl enable docker && sudo systemctl restart docker"
+      - "sudo systemctl enable kubelet && sudo systemctl restart kubelet"
+    files:
+      - path: "/etc/kubernetes/bootstrap.kubeconfig"
+        permissions: "0640"
+        owner: "root"
+        content: |-
+          apiVersion: v1
+          clusters:
+          - cluster:
+              certificate-authority-data: AAAAAAAAAAAAAAAAAAAAAA
+              server: https://0.0.0.0:30000
+            name: kd9wj07zh
+          contexts:
+          - context:
+              cluster: kd9wj07zh
+              user: kd9wj07zh
+            name: kd9wj07zh
+          current-context: kd9wj07zh
+          kind: Config
+          preferences: {}
+          users:
+          - name: kd9wj07zh
+            user:
+              token: AAAAAAAAAAAAAAAAAAAAAA
+
+      - path: "/etc/systemd/system/kubelet.service"
+        permissions: "0640"
+        owner: "root"
+        content: |-
+          [Unit]
+          Description=Kubernetes Kubelet
+          [Service]
+          Environment=KUBELET_IMAGE_TAG=v1.6.4_coreos.0
+          Environment="RKT_RUN_ARGS=--uuid-file-save=/var/run/kubelet-pod.uuid \
+            --volume dns,kind=host,source=/etc/resolv.conf \
+            --mount volume=dns,target=/etc/resolv.conf \
+            --volume cni-conf,kind=host,source=/etc/cni/net.d \
+            --mount volume=cni-conf,target=/etc/cni/net.d \
+            --volume var-log,kind=host,source=/var/log \
+            --mount volume=var-log,target=/var/log"
+          ExecStartPre=/usr/bin/mkdir -p /etc/cni/net.d
+          ExecStartPre=/usr/bin/mkdir -p /etc/kubernetes/manifests
+          ExecStartPre=/usr/bin/mkdir -p /var/log/containers
+          ExecStartPre=-/usr/bin/rkt rm --uuid-file=/var/run/kubelet-pod.uuid
+          ExecStart=/usr/lib/coreos/kubelet-wrapper \
+            --api-servers=https://0.0.0.0:30000 \
+            --container-runtime=docker \
+            --allow-privileged=true \
+            --pod-manifest-path=/etc/kubernetes/manifests \
+            --register-node=true \
+            --cni-conf-dir=/etc/cni/net.d \
+            --network-plugin=cni \
+            --cluster-dns=10.10.10.10 \
+            --cluster_domain=cluster.local \
+            --kubeconfig=/etc/kubernetes/kubeconfig \
+            --experimental-bootstrap-kubeconfig=/etc/kubernetes/bootstrap.kubeconfig \
+            --cert-dir=/etc/kubernetes
+          ExecStop=-/usr/bin/rkt stop --uuid-file=/var/run/kubelet-pod.uuid
+          Restart=always
+          RestartSec=10
+          [Install]
+          WantedBy=multi-user.target
+resources:
+  - type: reference
+    reference:
+      kind: secret
+      apiVersion: v1
+      name: digitalocean-token
