@@ -2,7 +2,7 @@ kind: Node
 metadata:
   name: node1
   annotations:
-    node.k8s.io/node-class: "kubermatic-coreos-worker-v1-6-4-0"
+    node.k8s.io/node-class: "do-sfo1-2gb-coreos-stable"
   labels:
     node.k8s.io/controller: "kube-machine"
     beta.kubernetes.io/arch: amd64
