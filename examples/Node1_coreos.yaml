@@ -1,0 +1,11 @@
+kind: Node
+metadata:
+  name: node1
+  annotations:
+    node.k8s.io/node-class: "kubermatic-coreos-worker-v1-6-4-0"
+  labels:
+    node.k8s.io/controller: "kube-machine"
+    beta.kubernetes.io/arch: amd64
+    beta.kubernetes.io/os: linux
+    kubernetes.io/hostname: node1
+status:

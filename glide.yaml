@@ -1,0 +1,10 @@
+package: github.com/kube-node/kube-machine
+import:
+- package: github.com/docker/machine
+  version: 0.11.0
+- package: k8s.io/client-go
+  version: v3.0.0-beta.0
+- package: github.com/codegangsta/cli
+  version: 0302d3914d2a6ad61404584cdae6e6dbc9c03599
+- package: github.com/spf13/pflag
+- package: github.com/kube-node/nodeset
