@@ -1,5 +1,9 @@
 # Kube-machine - Node Controller
 
+Unit tests: [![CircleCI](https://circleci.com/gh/kube-node/kube-machine/tree/master.svg?style=svg)](https://circleci.com/gh/kube-node/kube-machine/tree/master)
+
+## Overview
+
 This is a reference implementation of a Node controller based on [Docker machine](https://github.com/docker/machine)
 
 The whole implementation is more a proof-of-concept.
