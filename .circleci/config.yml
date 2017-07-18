@@ -1,6 +1,6 @@
 version: 2
 jobs:
-  build:
+  install-dependencies:
     docker:
       - image: circleci/golang:1.8
     working_directory: /go/src/github.com/kube-node/kube-machine
@@ -9,4 +9,102 @@ jobs:
       - run: go get -u github.com/Masterminds/glide
       - run: glide install --strip-vendor
       - run: git checkout -- vendor/
+      - persist_to_workspace:
+          root: /go/src/github.com/kube-node/kube-machine
+          paths:
+            - .
+  test:
+    docker:
+      - image: circleci/golang:1.8
+    working_directory: /go/src/github.com/kube-node/kube-machine
+    steps:
+      - attach_workspace:
+          at: .
       - run: go test -v $(go list ./... | grep -v /vendor/)
+  build:
+    docker:
+      - image: circleci/golang:1.8
+    working_directory: /go/src/github.com/kube-node/kube-machine
+    steps:
+      - attach_workspace:
+          at: .
+      - run: go build -o node-controller cmd/controller/main.go
+      - store_artifacts:
+          path: node-controller
+          destination: node-controller
+      - run: mkdir _output && mv node-controller _output/
+      - persist_to_workspace:
+          root: /go/src/github.com/kube-node/kube-machine
+          paths:
+            - .
+  push-hash:
+    docker:
+      - image: docker:stable
+    working_directory: /go/src/github.com/kube-node/kube-machine
+    steps:
+      - run: apk update && apk add tar
+      - attach_workspace:
+          at: .
+      - setup_remote_docker
+      - run: |
+          docker build -t kubenode/kube-machine .
+          docker login -u $DOCKER_USER -p $DOCKER_PASS
+          docker tag kubenode/kube-machine kubenode/kube-machine:$CIRCLE_SHA1
+          docker push kubenode/kube-machine:$CIRCLE_SHA1
+  push-latest:
+    docker:
+      - image: docker:stable
+    working_directory: /go/src/github.com/kube-node/kube-machine
+    steps:
+      - run: apk update && apk add tar
+      - attach_workspace:
+          at: .
+      - setup_remote_docker
+      - run: |
+          docker build -t kubenode/kube-machine .
+          docker login -u $DOCKER_USER -p $DOCKER_PASS
+          docker tag kubenode/kube-machine kubenode/kube-machine:latest
+          docker push kubenode/kube-machine:latest
+  push-release:
+    docker:
+      - image: docker:stable
+    working_directory: /go/src/github.com/kube-node/kube-machine
+    steps:
+      - run: apk update && apk add tar
+      - attach_workspace:
+          at: .
+      - setup_remote_docker
+      - run: |
+          docker build -t kubenode/kube-machine .
+          docker login -u $DOCKER_USER -p $DOCKER_PASS
+          docker tag kubenode/kube-machine kubenode/kube-machine:$CIRCLE_BRANCH
+          docker push kubenode/kube-machine:$CIRCLE_BRANCH
+
+workflows:
+  version: 2
+  build_and_test:
+    jobs:
+      - install-dependencies
+      - test:
+          requires:
+            - install-dependencies
+      - build:
+          requires:
+            - install-dependencies
+      - push-hash:
+          requires:
+            - build
+      - push-latest:
+          requires:
+            - build
+          filters:
+            branches:
+              only:
+                - master
+      - push-release:
+          requires:
+            - build
+          filters:
+            branches:
+              only:
+                - /release-.*/
