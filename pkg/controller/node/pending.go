@@ -94,7 +94,12 @@ func (c *Controller) pendingCreateInstance(node *v1.Node) (*v1.Node, error) {
 	mcnFlags := mhost.Driver.GetCreateFlags()
 	driverOpts := options.GetDriverOpts(opts, mcnFlags, class.Resources)
 
+	if url, exists := config.DockerMachineFlags["engine-install-url"]; exists {
+		mhost.HostOptions.EngineOptions.InstallURL = url
+	}
+
 	mhost.Driver.SetConfigFromFlags(driverOpts)
+
 	err = c.mapi.Create(mhost)
 	if err != nil {
 		mhost.Driver.Remove()
