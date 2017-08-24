@@ -77,9 +77,8 @@ func (c *Controller) processNextItem() bool {
 
 	defer c.nodeQueue.Done(key)
 
-	// Invoke the method containing the business logic
 	err := c.syncNode(key.(string))
-	// Handle the error if something went wrong during the execution of the business logic
+
 	c.handleErr(err, key)
 	return true
 }
@@ -127,24 +126,7 @@ func (c *Controller) syncNode(key string) error {
 	}
 
 	if node != nil {
-		modifiedData, err := json.Marshal(node)
-		if err != nil {
-			return err
-		}
-		b, err := strategicpatch.CreateTwoWayMergePatch(originalData, modifiedData, v1.Node{})
-		if err != nil {
-			return err
-		}
-		//Avoid empty patch calls
-		if string(b) == "{}" {
-			return nil
-		}
-
-		node, err = c.client.Nodes().Patch(node.Name, types.StrategicMergePatchType, b)
-		if err != nil {
-			return err
-		}
-		return c.nodeIndexer.Update(node)
+		return c.updateNode(originalData, node)
 	}
 
 	c.nodeQueue.AddAfter(key, 30*time.Second)
@@ -168,6 +150,27 @@ func (c *Controller) getNodeClass(name string) (*v1alpha1.NodeClass, *nodeclass.
 	}
 
 	return class, &config, nil
+}
+
+func (c *Controller) updateNode(originalData []byte, node *v1.Node) error {
+	modifiedData, err := json.Marshal(node)
+	if err != nil {
+		return err
+	}
+	b, err := strategicpatch.CreateTwoWayMergePatch(originalData, modifiedData, v1.Node{})
+	if err != nil {
+		return err
+	}
+	//Avoid empty patch calls
+	if string(b) == "{}" {
+		return nil
+	}
+
+	node, err = c.client.Nodes().Patch(node.Name, types.StrategicMergePatchType, b)
+	if err != nil {
+		return err
+	}
+	return c.nodeIndexer.Update(node)
 }
 
 // handleErr checks if an error happened and makes sure we will retry later.
