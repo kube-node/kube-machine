@@ -39,6 +39,9 @@ const (
 	publicIPAnnotationKey   = "node.k8s.io/public-ip"
 	hostnameAnnotationKey   = "node.k8s.io/hostname"
 
+	controllerLabelKey = "node.k8s.io/controller"
+	controllerName     = "kube-machine"
+
 	phasePending      = "pending"
 	phaseProvisioning = "provisioning"
 	phaseLaunching    = "launching"
@@ -46,7 +49,8 @@ const (
 	phaseDeleting     = "deleting"
 )
 
-var NodeClassNotFoundErr = errors.New("node class not found")
+var nodeClassNotFoundErr = errors.New("node class not found")
+var nodeNotFoundErr = errors.New("node not found")
 
 func New(
 	client *kubernetes.Clientset,
@@ -83,18 +87,28 @@ func (c *Controller) processNextItem() bool {
 	return true
 }
 
-func (c *Controller) syncNode(key string) error {
+func (c *Controller) getNode(key string) (*v1.Node, error) {
 	nobj, exists, err := c.nodeIndexer.GetByKey(key)
 	if err != nil {
-		glog.Errorf("Fetching object with key %s from store failed with %v", key, err)
-		return err
+		return nil, err
 	}
 	if !exists {
-		glog.Infof("Node %s does not exist anymore\n", key)
+		return nil, nodeNotFoundErr
+	}
+	return nobj.(*v1.Node), nil
+}
+
+func (c *Controller) syncNode(key string) error {
+	node, err := c.getNode(key)
+	if err != nil {
+		glog.Errorf("Failed to fetch node %s: %v", key, err)
 		return nil
 	}
 
-	node := nobj.(*v1.Node)
+	if node.Labels[controllerLabelKey] != controllerName {
+		return nil
+	}
+
 	originalData, err := json.Marshal(node)
 
 	glog.V(4).Infof("Processing Node %s\n", node.GetName())
@@ -139,7 +153,7 @@ func (c *Controller) getNodeClass(name string) (*v1alpha1.NodeClass, *nodeclass.
 		return nil, nil, fmt.Errorf("could not fetch nodeclass from store: %v", err)
 	}
 	if !exists {
-		return nil, nil, NodeClassNotFoundErr
+		return nil, nil, nodeClassNotFoundErr
 	}
 
 	class := ncobj.(*v1alpha1.NodeClass)

@@ -56,11 +56,9 @@ func main() {
 	nodeIndexer, nodeInformer := cache.NewIndexerInformer(
 		&cache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
-				options.LabelSelector = "node.k8s.io/controller=kube-machine"
 				return client.Nodes().List(options)
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
-				options.LabelSelector = "node.k8s.io/controller=kube-machine"
 				return client.Nodes().Watch(options)
 			},
 		},
