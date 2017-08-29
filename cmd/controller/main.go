@@ -2,13 +2,15 @@ package main
 
 import (
 	goflag "flag"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/docker/machine/libmachine/log"
 	"github.com/docker/machine/libmachine/ssh"
 	"github.com/golang/glog"
 	"github.com/kube-node/kube-machine/pkg/controller/node"
-	"github.com/kube-node/kube-machine/pkg/libmachine"
 	"github.com/kube-node/kube-machine/pkg/nodeclass"
 	"github.com/kube-node/nodeset/pkg/client/clientset_v1alpha1"
 	"github.com/kube-node/nodeset/pkg/nodeset/v1alpha1"
@@ -27,6 +29,10 @@ import (
 
 var kubeconfig *string = flag.String("kubeconfig", "", "Path to kubeconfig file with authorization and master location information.")
 var master *string = flag.String("master", "", "The address of the Kubernetes API server (overrides any value in kubeconfig)")
+
+const (
+	workerCount = 10
+)
 
 func main() {
 	flag.CommandLine.AddGoFlagSet(goflag.CommandLine)
@@ -106,22 +112,28 @@ func main() {
 	//Is default on docker-machine. Lets stick to defaults.
 	ssh.SetDefaultClient(ssh.External)
 
-	api := libmachine.New()
-	defer api.Close()
-
 	controller := node.New(
 		client,
 		nodeQueue,
 		nodeIndexer,
 		nodeInformer,
 		nodeClassStore,
-		nodeClassController,
-		api)
+		nodeClassController)
 
 	stop := make(chan struct{})
-	defer close(stop)
-	go controller.Run(4, stop)
+	gracefulStop := make(chan os.Signal)
+	defer close(gracefulStop)
+	signal.Notify(gracefulStop, syscall.SIGTERM)
+	signal.Notify(gracefulStop, syscall.SIGINT)
 
-	// Wait forever
-	select {}
+	go func() {
+		sig := <-gracefulStop
+		glog.Infof("Caught sig: %+v", sig)
+		close(stop)
+		close(gracefulStop)
+	}()
+
+	controller.Run(workerCount, stop)
+	glog.Info("Controller stopped")
+	os.Exit(0)
 }

@@ -8,7 +8,6 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/kube-node/kube-machine/pkg/controller"
-	"github.com/kube-node/kube-machine/pkg/libmachine"
 	"github.com/kube-node/kube-machine/pkg/nodeclass"
 	"github.com/kube-node/nodeset/pkg/nodeset/v1alpha1"
 	"k8s.io/apimachinery/pkg/types"
@@ -27,7 +26,6 @@ type Controller struct {
 	nodeQueue         workqueue.RateLimitingInterface
 	nodeClassStore    cache.Store
 	nodeClassInformer cache.Controller
-	mapi              *libmachine.Client
 	client            *kubernetes.Clientset
 }
 
@@ -59,7 +57,6 @@ func New(
 	nodeInformer cache.Controller,
 	nodeClassStore cache.Store,
 	nodeClassController cache.Controller,
-	mapi *libmachine.Client,
 ) controller.Interface {
 	return &Controller{
 		nodeInformer:      nodeInformer,
@@ -67,7 +64,6 @@ func New(
 		nodeQueue:         queue,
 		nodeClassInformer: nodeClassController,
 		nodeClassStore:    nodeClassStore,
-		mapi:              mapi,
 		client:            client,
 	}
 }
@@ -235,6 +231,9 @@ func (c *Controller) Run(workerCount int, stopCh chan struct{}) {
 
 	<-stopCh
 	glog.Info("Stopping Node controller")
+	glog.Info("Waiting until all pending migrations are done...")
+	c.waitUntilMigrationDone()
+	glog.Info("Done")
 }
 
 func (c *Controller) runWorker() {

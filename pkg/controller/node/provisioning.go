@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"encoding/json"
+	"github.com/kube-node/kube-machine/pkg/libmachine"
 	"k8s.io/client-go/pkg/api/v1"
 )
 
@@ -17,7 +18,10 @@ func (c *Controller) syncProvisioningNode(node *v1.Node) (changedN *v1.Node, err
 }
 
 func (c *Controller) provisionInstance(node *v1.Node) (*v1.Node, error) {
-	h, err := c.mapi.Load(node)
+	mapi := libmachine.New()
+	defer mapi.Close()
+
+	h, err := mapi.Load(node)
 	if err != nil {
 		return nil, err
 	}
@@ -27,7 +31,7 @@ func (c *Controller) provisionInstance(node *v1.Node) (*v1.Node, error) {
 		return nil, fmt.Errorf("could not get nodeclass %q for node %s: %v", node.Annotations[classAnnotationKey], node.Name, err)
 	}
 
-	err = c.mapi.Provision(h, config)
+	err = mapi.Provision(h, config)
 	if err != nil {
 		return nil, fmt.Errorf("could not provision: %v", err)
 	}

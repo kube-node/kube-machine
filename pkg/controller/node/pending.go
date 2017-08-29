@@ -7,6 +7,7 @@ import (
 	"errors"
 	"github.com/docker/machine/libmachine/drivers"
 	"github.com/docker/machine/libmachine/state"
+	"github.com/kube-node/kube-machine/pkg/libmachine"
 	nodehelper "github.com/kube-node/kube-machine/pkg/node"
 	"github.com/kube-node/kube-machine/pkg/options"
 	"k8s.io/client-go/pkg/api/v1"
@@ -85,7 +86,10 @@ func (c *Controller) pendingCreateInstance(node *v1.Node) (*v1.Node, error) {
 		return nil, fmt.Errorf("error attempting to marshal bare driver data: %s", err)
 	}
 
-	mhost, err := c.mapi.NewHost(config.Provider, rawDriver)
+	mapi := libmachine.New()
+	defer mapi.Close()
+
+	mhost, err := mapi.NewHost(config.Provider, rawDriver)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create docker machine host for node %q: %v", node.Name, err)
 	}
@@ -100,7 +104,7 @@ func (c *Controller) pendingCreateInstance(node *v1.Node) (*v1.Node, error) {
 
 	mhost.Driver.SetConfigFromFlags(driverOpts)
 
-	err = c.mapi.Create(mhost)
+	err = mapi.Create(mhost)
 	if err != nil {
 		mhost.Driver.Remove()
 		return nil, fmt.Errorf("failed to create node %q on cloud provider: %v. Deleted eventually created node on cloud provider", node.Name, err)
@@ -119,7 +123,10 @@ func (c *Controller) pendingCreateInstanceDetails(node *v1.Node) (*v1.Node, erro
 		return nil, nil
 	}
 
-	h, err := c.mapi.Load(node)
+	mapi := libmachine.New()
+	defer mapi.Close()
+
+	h, err := mapi.Load(node)
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +148,10 @@ func (c *Controller) pendingCreateInstanceDetails(node *v1.Node) (*v1.Node, erro
 }
 
 func (c *Controller) pendingWaitUntilInstanceIsRunning(node *v1.Node) (*v1.Node, error) {
-	h, err := c.mapi.Load(node)
+	mapi := libmachine.New()
+	defer mapi.Close()
+
+	h, err := mapi.Load(node)
 	if err != nil {
 		return nil, err
 	}
