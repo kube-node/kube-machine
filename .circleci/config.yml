@@ -84,16 +84,28 @@ workflows:
   version: 2
   build_and_test:
     jobs:
-      - install-dependencies
+      - install-dependencies:
+          filters:
+            tags:
+              only: /v.*/
       - test:
           requires:
             - install-dependencies
+          filters:
+            tags:
+              only: /v.*/
       - build:
           requires:
             - install-dependencies
+          filters:
+            tags:
+              only: /v.*/
       - push-hash:
           requires:
             - build
+          filters:
+            tags:
+              only: /v.*/
       - push-latest:
           requires:
             - build
@@ -101,11 +113,13 @@ workflows:
             branches:
               only:
                 - master
+            tags:
+              only: /v.*/
       - push-release:
           requires:
             - build
           filters:
             tags:
-              only: /.*/
+              only: /v.*/
             branches:
               ignore: /.*/
