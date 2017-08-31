@@ -72,6 +72,9 @@ func (c *Controller) pendingCreateFinalizer(node *v1.Node) (*v1.Node, error) {
 }
 
 func (c *Controller) pendingCreateInstance(node *v1.Node) (*v1.Node, error) {
+	c.nodeCreateLock.Lock()
+	defer c.nodeCreateLock.Unlock()
+
 	if node.Annotations[driverDataAnnotationKey] != "" {
 		return nil, nil
 	}

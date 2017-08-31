@@ -18,6 +18,7 @@ import (
 	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
+	"sync"
 )
 
 type Controller struct {
@@ -27,6 +28,7 @@ type Controller struct {
 	nodeClassStore    cache.Store
 	nodeClassInformer cache.Controller
 	client            *kubernetes.Clientset
+	nodeCreateLock    *sync.Mutex
 }
 
 const (
@@ -65,6 +67,7 @@ func New(
 		nodeClassInformer: nodeClassController,
 		nodeClassStore:    nodeClassStore,
 		client:            client,
+		nodeCreateLock:    &sync.Mutex{},
 	}
 }
 
@@ -106,6 +109,10 @@ func (c *Controller) syncNode(key string) error {
 	}
 
 	originalData, err := json.Marshal(node)
+	if err != nil {
+		glog.Errorf("Failed marshal node %s: %v", key, err)
+		return nil
+	}
 
 	glog.V(4).Infof("Processing Node %s\n", node.GetName())
 
