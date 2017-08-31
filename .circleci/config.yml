@@ -77,8 +77,8 @@ jobs:
       - run: |
           docker build -t kubenode/kube-machine .
           docker login -u $DOCKER_USER -p $DOCKER_PASS
-          docker tag kubenode/kube-machine kubenode/kube-machine:$CIRCLE_BRANCH
-          docker push kubenode/kube-machine:$CIRCLE_BRANCH
+          docker tag kubenode/kube-machine kubenode/kube-machine:$CIRCLE_TAG
+          docker push kubenode/kube-machine:$CIRCLE_TAG
 
 workflows:
   version: 2
@@ -105,6 +105,7 @@ workflows:
           requires:
             - build
           filters:
+            tags:
+              only: /.*/
             branches:
-              only:
-                - /release-.*/
+              ignore: /.*/
