@@ -2,12 +2,14 @@ package main
 
 import (
 	goflag "flag"
+	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
-	"github.com/docker/machine/libmachine/log"
+	dlog "github.com/docker/machine/libmachine/log"
 	"github.com/docker/machine/libmachine/ssh"
 	"github.com/golang/glog"
 	"github.com/kube-node/kube-machine/pkg/controller/node"
@@ -29,6 +31,7 @@ import (
 
 var kubeconfig *string = flag.String("kubeconfig", "", "Path to kubeconfig file with authorization and master location information.")
 var master *string = flag.String("master", "", "The address of the Kubernetes API server (overrides any value in kubeconfig)")
+var healthListenAddress *string = flag.String("health-listen-address", ":8081", "The listen address for health checking")
 
 const (
 	workerCount = 10
@@ -37,7 +40,7 @@ const (
 func main() {
 	flag.CommandLine.AddGoFlagSet(goflag.CommandLine)
 	flag.Parse()
-	log.SetDebug(true)
+	dlog.SetDebug(true)
 
 	var config *rest.Config
 	var err error
@@ -121,19 +124,20 @@ func main() {
 		nodeClassController)
 
 	stop := make(chan struct{})
-	gracefulStop := make(chan os.Signal)
-	defer close(gracefulStop)
-	signal.Notify(gracefulStop, syscall.SIGTERM)
-	signal.Notify(gracefulStop, syscall.SIGINT)
-
+	c := make(chan os.Signal, 2)
+	signal.Notify(c, []os.Signal{os.Interrupt, syscall.SIGTERM}...)
 	go func() {
-		sig := <-gracefulStop
-		glog.Infof("Caught sig: %+v", sig)
+		<-c
 		close(stop)
-		close(gracefulStop)
 	}()
 
+	go startHealth()
 	controller.Run(workerCount, stop)
-	glog.Info("Controller stopped")
-	os.Exit(0)
+}
+
+func startHealth() {
+	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("OK"))
+	})
+	log.Fatal(http.ListenAndServe(*healthListenAddress, nil))
 }
