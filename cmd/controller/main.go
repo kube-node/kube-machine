@@ -12,6 +12,7 @@ import (
 	dlog "github.com/docker/machine/libmachine/log"
 	"github.com/docker/machine/libmachine/ssh"
 	"github.com/golang/glog"
+	"github.com/kube-node/kube-machine/pkg/controller"
 	"github.com/kube-node/kube-machine/pkg/controller/node"
 	"github.com/kube-node/kube-machine/pkg/nodeclass"
 	"github.com/kube-node/nodeset/pkg/client/clientset_v1alpha1"
@@ -115,7 +116,7 @@ func main() {
 	//Is default on docker-machine. Lets stick to defaults.
 	ssh.SetDefaultClient(ssh.External)
 
-	controller := node.New(
+	c := node.New(
 		client,
 		nodeQueue,
 		nodeIndexer,
@@ -124,20 +125,26 @@ func main() {
 		nodeClassController)
 
 	stop := make(chan struct{})
-	c := make(chan os.Signal, 2)
-	signal.Notify(c, []os.Signal{os.Interrupt, syscall.SIGTERM}...)
+	osc := make(chan os.Signal, 2)
+	signal.Notify(osc, []os.Signal{os.Interrupt, syscall.SIGTERM}...)
 	go func() {
-		<-c
+		<-osc
 		close(stop)
 	}()
 
-	go startHealth()
-	controller.Run(workerCount, stop)
+	go startHealth(c)
+	c.Run(workerCount, stop)
 }
 
-func startHealth() {
+func startHealth(c controller.Interface) {
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("OK"))
+		if c.IsReady() {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("OK"))
+		} else {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("Not ready"))
+		}
 	})
 	log.Fatal(http.ListenAndServe(*healthListenAddress, nil))
 }

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/golang/glog"
@@ -18,7 +19,6 @@ import (
 	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
-	"sync"
 )
 
 type Controller struct {
@@ -246,4 +246,8 @@ func (c *Controller) Run(workerCount int, stopCh chan struct{}) {
 func (c *Controller) runWorker() {
 	for c.processNextItem() {
 	}
+}
+
+func (c *Controller) IsReady() bool {
+	return c.nodeInformer.HasSynced() && c.nodeClassInformer.HasSynced()
 }
