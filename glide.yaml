@@ -1,7 +1,7 @@
 package: github.com/kube-node/kube-machine
 import:
 - package: github.com/docker/machine
-  version: 0.11.0
+  version: master
 - package: k8s.io/client-go
   version: v3.0.0-beta.0
 - package: github.com/codegangsta/cli

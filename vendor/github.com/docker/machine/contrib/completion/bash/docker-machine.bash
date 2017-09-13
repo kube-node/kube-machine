@@ -20,8 +20,35 @@ _docker_machine_q() {
     docker-machine 2>/dev/null "$@"
 }
 
+# suppresses trailing whitespace
+_docker_machine_nospace() {
+    # compopt is not available in ancient bash versions (OSX)
+    # so only call it if it's available
+    type compopt &>/dev/null && compopt -o nospace
+}
+
 _docker_machine_machines() {
     _docker_machine_q ls --format '{{.Name}}' "$@"
+}
+
+_docker_machine_drivers() {
+    local drivers=(
+        amazonec2
+        azure
+        digitalocean
+        exoscale
+        generic
+        google
+        hyperv
+        openstack
+        rackspace
+        softlayer
+        virtualbox
+        vmwarefusion
+        vmwarevcloudair
+        vmwarevsphere
+    )
+    echo "${drivers[@]}"
 }
 
 _docker_machine_value_of_option() {
@@ -32,6 +59,31 @@ _docker_machine_value_of_option() {
             break
         fi
     done
+}
+
+# Returns `key` if we are currently completing the value of a map option
+# (`key=value`) which matches the glob passed in as an argument.
+# This function is needed for key-specific argument completions.
+_docker_machine_map_key_of_current_option() {
+    local glob="$1"
+
+    local key glob_pos
+    if [ "$cur" = "=" ] ; then        # key= case
+            key="$prev"
+            glob_pos=$((cword - 2))
+    elif [[ $cur == *=* ]] ; then     # key=value case (OSX)
+            key=${cur%=*}
+            glob_pos=$((cword - 1))
+    elif [ "$prev" = "=" ] ; then
+            key=${words[$cword - 2]}  # key=value case
+            glob_pos=$((cword - 3))
+    else
+            return
+    fi
+
+    [ "${words[$glob_pos]}" = "=" ] && ((glob_pos--))  # --option=key=value syntax
+
+    [[ ${words[$glob_pos]} == $glob ]] && echo "$key"
 }
 
 # --- completion functions ---------------------------------------------------
@@ -59,21 +111,7 @@ _docker_machine_config() {
 _docker_machine_create() {
     case "${prev}" in
         --driver|-d)
-            COMPREPLY=($(compgen -W "
-                amazonec2
-                azure
-                digitalocean
-                exoscale
-                generic
-                google
-                hyperv
-                openstack
-                rackspace
-                softlayer
-                virtualbox
-                vmwarefusion
-                vmwarevcloudair
-                vmwarevsphere" -- "${cur}"))
+            COMPREPLY=($(compgen -W "$(_docker_machine_drivers)" -- "${cur}"))
             return
             ;;
     esac
@@ -142,8 +180,25 @@ _docker_machine_kill() {
 }
 
 _docker_machine_ls() {
+    local key=$(_docker_machine_map_key_of_current_option '--filter')
+    case "$key" in
+        driver)
+            COMPREPLY=($(compgen -W "$(_docker_machine_drivers)" -- "${cur##*=}"))
+            return
+            ;;
+        state)
+            COMPREPLY=($(compgen -W "Error Paused Running Saved Starting Stopped Stopping" -- "${cur##*=}"))
+            return
+            ;;
+    esac
+
     case "${prev}" in
-        --filter|--format|-f|--timeout|-t)
+        --filter)
+            COMPREPLY=($(compgen -W "driver label name state swarm" -S= -- "${cur}"))
+            _docker_machine_nospace
+            return
+            ;;
+        --format|-f|--timeout|-t)
             return
             ;;
     esac
@@ -153,11 +208,19 @@ _docker_machine_ls() {
     fi
 }
 
+_docker_machine_provision() {
+    if [[ "${cur}" == -* ]]; then
+        COMPREPLY=($(compgen -W "--help" -- "${cur}"))
+    else
+        COMPREPLY=($(compgen -W "$(_docker_machine_machines --filter state=Running)" -- "${cur}"))
+    fi
+}
+
 _docker_machine_regenerate_certs() {
     if [[ "${cur}" == -* ]]; then
         COMPREPLY=($(compgen -W "--force -f --help" -- "${cur}"))
     else
-        COMPREPLY=($(compgen -W "$(_docker_machine_machines)" -- "${cur}"))
+        COMPREPLY=($(compgen -W "$(_docker_machine_machines --filter state=Running)" -- "${cur}"))
     fi
 }
 
@@ -187,7 +250,7 @@ _docker_machine_ssh() {
 
 _docker_machine_scp() {
     if [[ "${cur}" == -* ]]; then
-        COMPREPLY=($(compgen -W "--help --recursive -r" -- "${cur}"))
+        COMPREPLY=($(compgen -W "--delta -d --help --recursive -r" -- "${cur}"))
     else
         _filedir
         # It would be really nice to ssh to the machine and ls to complete
@@ -266,7 +329,7 @@ _docker_machine_docker_machine() {
 
 _docker_machine() {
     COMPREPLY=()
-    local commands=(active config create env inspect ip kill ls regenerate-certs restart rm ssh scp start status stop upgrade url version help)
+    local commands=(active config create env inspect ip kill ls provision regenerate-certs restart rm ssh scp start status stop upgrade url version help)
 
     local flags=(--debug --native-ssh --github-api-token --bugsnag-api-token --help --version)
     local wants_dir=(--storage-path)
