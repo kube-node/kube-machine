@@ -22,13 +22,14 @@ import (
 )
 
 type Controller struct {
-	nodeInformer      cache.Controller
-	nodeIndexer       cache.Indexer
-	nodeQueue         workqueue.RateLimitingInterface
-	nodeClassStore    cache.Store
-	nodeClassInformer cache.Controller
-	client            *kubernetes.Clientset
-	nodeCreateLock    *sync.Mutex
+	nodeInformer         cache.Controller
+	nodeIndexer          cache.Indexer
+	nodeQueue            workqueue.RateLimitingInterface
+	nodeClassStore       cache.Store
+	nodeClassInformer    cache.Controller
+	client               *kubernetes.Clientset
+	nodeCreateLock       *sync.Mutex
+	maxMigrationWaitTime time.Duration
 }
 
 const (
@@ -49,6 +50,7 @@ const (
 	phaseDeleting     = "deleting"
 
 	conditionUpdatePeriod = 5 * time.Second
+	migrationWorkerPeriod = 5 * time.Second
 )
 
 var nodeClassNotFoundErr = errors.New("node class not found")
@@ -61,15 +63,17 @@ func New(
 	nodeInformer cache.Controller,
 	nodeClassStore cache.Store,
 	nodeClassController cache.Controller,
+	maxMigrationWaitTime time.Duration,
 ) controller.Interface {
 	return &Controller{
-		nodeInformer:      nodeInformer,
-		nodeIndexer:       nodeIndexer,
-		nodeQueue:         queue,
-		nodeClassInformer: nodeClassController,
-		nodeClassStore:    nodeClassStore,
-		client:            client,
-		nodeCreateLock:    &sync.Mutex{},
+		nodeInformer:         nodeInformer,
+		nodeIndexer:          nodeIndexer,
+		nodeQueue:            queue,
+		nodeClassInformer:    nodeClassController,
+		nodeClassStore:       nodeClassStore,
+		client:               client,
+		nodeCreateLock:       &sync.Mutex{},
+		maxMigrationWaitTime: maxMigrationWaitTime,
 	}
 }
 
@@ -102,7 +106,7 @@ func (c *Controller) getNode(key string) (*v1.Node, error) {
 func (c *Controller) syncNode(key string) error {
 	node, err := c.getNode(key)
 	if err != nil {
-		glog.Errorf("Failed to fetch node %s: %v", key, err)
+		glog.V(0).Infof("Failed to fetch node %s: %v", key, err)
 		return nil
 	}
 
@@ -112,11 +116,11 @@ func (c *Controller) syncNode(key string) error {
 
 	originalData, err := json.Marshal(node)
 	if err != nil {
-		glog.Errorf("Failed marshal node %s: %v", key, err)
+		glog.V(0).Infof("Failed marshal node %s: %v", key, err)
 		return nil
 	}
 
-	glog.V(4).Infof("Processing Node %s\n", node.GetName())
+	glog.V(6).Infof("Processing Node %s\n", node.GetName())
 
 	// Get phase of node. In case we have not touched it set phase to `pending`
 	phase := node.Annotations[phaseAnnotationKey]
@@ -176,6 +180,7 @@ func (c *Controller) updateNode(originalData []byte, node *v1.Node) error {
 	if err != nil {
 		return err
 	}
+
 	b, err := strategicpatch.CreateTwoWayMergePatch(originalData, modifiedData, v1.Node{})
 	if err != nil {
 		return err
@@ -204,7 +209,7 @@ func (c *Controller) handleErr(err error, key interface{}) {
 
 	// This controller retries 5 times if something goes wrong. After that, it stops trying.
 	if c.nodeQueue.NumRequeues(key) < 5 {
-		glog.Infof("Error syncing node %v: %v", key, err)
+		glog.V(0).Infof("Error syncing node %v: %v", key, err)
 
 		// Re-enqueue the key rate limited. Based on the rate limiter on the
 		// nodeQueue and the re-enqueue history, the key will be processed later again.
@@ -215,7 +220,7 @@ func (c *Controller) handleErr(err error, key interface{}) {
 	c.nodeQueue.Forget(key)
 	// Report to an external entity that, even after several retries, we could not successfully process this key
 	runtime.HandleError(err)
-	glog.Infof("Dropping node %q out of the queue: %v", key, err)
+	glog.V(0).Infof("Dropping node %q out of the queue: %v", key, err)
 }
 
 func (c *Controller) Run(workerCount int, stopCh chan struct{}) {
@@ -223,7 +228,7 @@ func (c *Controller) Run(workerCount int, stopCh chan struct{}) {
 
 	// Let the workers stop when we are done
 	defer c.nodeQueue.ShutDown()
-	glog.Info("Starting Node controller")
+	glog.V(0).Info("Starting Node controller")
 
 	go c.nodeInformer.Run(stopCh)
 	go c.nodeClassInformer.Run(stopCh)
@@ -238,12 +243,13 @@ func (c *Controller) Run(workerCount int, stopCh chan struct{}) {
 		go wait.Until(c.runWorker, time.Second, stopCh)
 	}
 	go wait.Forever(c.readyConditionWorker, conditionUpdatePeriod)
+	go wait.Forever(c.migrationWorker, migrationWorkerPeriod)
 
 	<-stopCh
-	glog.Info("Stopping Node controller")
-	glog.Info("Waiting until all pending migrations are done...")
+	glog.V(0).Info("Stopping Node controller")
+	glog.V(0).Info("Waiting until all pending migrations are done...")
 	c.waitUntilMigrationDone()
-	glog.Info("Done")
+	glog.V(0).Info("Done")
 }
 
 func (c *Controller) runWorker() {

@@ -33,9 +33,10 @@ import (
 var kubeconfig *string = flag.String("kubeconfig", "", "Path to kubeconfig file with authorization and master location information.")
 var master *string = flag.String("master", "", "The address of the Kubernetes API server (overrides any value in kubeconfig)")
 var healthListenAddress *string = flag.String("health-listen-address", ":8081", "The listen address for health checking")
+var maxMigrationWaitSeconds *int = flag.Int("max-migration-wait-seconds", 20, "Maximum time to wait for a migration until a deleted node gets deleted at cloud-provider. A migration happens if the actual kubelet registers with a different name than specified in the node resource OR when the kubelet deletes the existing node and recreates it(happens on every cloud-provider)")
 
 const (
-	workerCount = 10
+	workerCount = 25
 )
 
 func main() {
@@ -122,7 +123,8 @@ func main() {
 		nodeIndexer,
 		nodeInformer,
 		nodeClassStore,
-		nodeClassController)
+		nodeClassController,
+		time.Duration(*maxMigrationWaitSeconds)*time.Second)
 
 	stop := make(chan struct{})
 	osc := make(chan os.Signal, 2)
