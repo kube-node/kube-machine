@@ -47,6 +47,8 @@ const (
 	phaseLaunching    = "launching"
 	phaseRunning      = "running"
 	phaseDeleting     = "deleting"
+
+	conditionUpdatePeriod = 5 * time.Second
 )
 
 var nodeClassNotFoundErr = errors.New("node class not found")
@@ -235,6 +237,7 @@ func (c *Controller) Run(workerCount int, stopCh chan struct{}) {
 	for i := 0; i < workerCount; i++ {
 		go wait.Until(c.runWorker, time.Second, stopCh)
 	}
+	go wait.Forever(c.readyConditionWorker, conditionUpdatePeriod)
 
 	<-stopCh
 	glog.Info("Stopping Node controller")
