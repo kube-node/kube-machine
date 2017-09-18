@@ -2,7 +2,8 @@ package node
 
 import (
 	nodehelper "github.com/kube-node/kube-machine/pkg/node"
-	"k8s.io/client-go/pkg/api/v1"
+
+	"k8s.io/api/core/v1"
 )
 
 func (c *Controller) syncLaunchingNode(node *v1.Node) (changedN *v1.Node, err error) {

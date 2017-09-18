@@ -6,9 +6,8 @@ jobs:
     working_directory: /go/src/github.com/kube-node/kube-machine
     steps:
       - checkout
-      - run: go get -u github.com/Masterminds/glide
-      - run: glide install --strip-vendor
-      - run: git checkout -- vendor/
+      - run: go get -u github.com/golang/dep/cmd/dep
+      - run: dep ensure
       - persist_to_workspace:
           root: /go/src/github.com/kube-node/kube-machine
           paths:

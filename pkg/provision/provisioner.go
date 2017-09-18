@@ -4,13 +4,13 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
+	"strings"
 	"text/template"
 
 	"github.com/docker/machine/libmachine/drivers"
 	"github.com/docker/machine/libmachine/provision"
 	"github.com/golang/glog"
 	"github.com/kube-node/kube-machine/pkg/nodeclass"
-	"strings"
 )
 
 type NodeClassProvisionerWrapper struct {

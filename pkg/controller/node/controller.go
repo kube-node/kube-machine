@@ -11,12 +11,14 @@ import (
 	"github.com/kube-node/kube-machine/pkg/controller"
 	"github.com/kube-node/kube-machine/pkg/nodeclass"
 	"github.com/kube-node/nodeset/pkg/nodeset/v1alpha1"
+
+	"k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 )
@@ -99,14 +101,11 @@ func (c *Controller) processNextItem() bool {
 }
 
 func (c *Controller) getNode(key string) (*v1.Node, error) {
-	nobj, exists, err := c.nodeIndexer.GetByKey(key)
+	node, err := c.client.CoreV1().Nodes().Get(key, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
-	if !exists {
-		return nil, nodeNotFoundErr
-	}
-	return nobj.(*v1.Node), nil
+	return node, nil
 }
 
 func (c *Controller) syncNode(key string) error {
@@ -169,7 +168,7 @@ func (c *Controller) syncNode(key string) error {
 }
 
 func (c *Controller) getNodeClass(name string) (*v1alpha1.NodeClass, *nodeclass.NodeClassConfig, error) {
-	ncobj, exists, err := c.nodeClassStore.GetByKey("default/" + name)
+	ncobj, exists, err := c.nodeClassStore.GetByKey(name)
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not fetch nodeclass from store: %v", err)
 	}
@@ -202,11 +201,8 @@ func (c *Controller) updateNode(originalData []byte, node *v1.Node) error {
 		return nil
 	}
 
-	node, err = c.client.Nodes().Patch(node.Name, types.StrategicMergePatchType, b)
-	if err != nil {
-		return err
-	}
-	return c.nodeIndexer.Update(node)
+	_, err = c.client.CoreV1().Nodes().Patch(node.Name, types.StrategicMergePatchType, b)
+	return err
 }
 
 // handleErr checks if an error happened and makes sure we will retry later.

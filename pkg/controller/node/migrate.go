@@ -6,9 +6,14 @@ import (
 
 	"github.com/golang/glog"
 	nodehelper "github.com/kube-node/kube-machine/pkg/node"
+
+	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/pkg/api/v1"
+)
+
+const (
+	LabelHostname = "kubernetes.io/hostname"
 )
 
 func (c *Controller) migrateNode(srcNode, targetNode *v1.Node) error {
@@ -60,8 +65,8 @@ func (c *Controller) findSibling(node *v1.Node) (*v1.Node, error) {
 			glog.V(6).Infof("Found a matching node via name comparison. Deleted: %q New: %q", node.Name, candidate.Name)
 			return candidate, nil
 		}
-		if candidate.ObjectMeta.Labels[metav1.LabelHostname] != "" && candidate.ObjectMeta.Labels[metav1.LabelHostname] == node.ObjectMeta.Labels[metav1.LabelHostname] {
-			glog.V(6).Infof("Found a matching node via hostname-label comparison. Deleted: %q New: %q", node.ObjectMeta.Labels[metav1.LabelHostname], candidate.ObjectMeta.Labels[metav1.LabelHostname])
+		if candidate.ObjectMeta.Labels[LabelHostname] != "" && candidate.ObjectMeta.Labels[LabelHostname] == node.ObjectMeta.Labels[LabelHostname] {
+			glog.V(6).Infof("Found a matching node via hostname-label comparison. Deleted: %q New: %q", node.ObjectMeta.Labels[LabelHostname], candidate.ObjectMeta.Labels[LabelHostname])
 			return candidate, nil
 		}
 	}
@@ -86,15 +91,11 @@ func (c *Controller) migrationWorker() {
 			}
 			continue
 		}
-		if node.ObjectMeta.CreationTimestamp.Before(sibling.ObjectMeta.CreationTimestamp) {
+		if node.ObjectMeta.CreationTimestamp.Before(&sibling.ObjectMeta.CreationTimestamp) {
 			glog.V(4).Infof("Found a suitable sibling for node %s to migrate. Deleting now %s to trigger the migration", node.Name, node.Name)
-			err := c.client.Nodes().Delete(node.Name, &metav1.DeleteOptions{})
+			err := c.client.CoreV1().Nodes().Delete(node.Name, &metav1.DeleteOptions{})
 			if err != nil {
 				glog.V(0).Infof("Failed to delete node %s for migration: %v", node.Name, err)
-			}
-			c.nodeIndexer.Delete(node)
-			if err != nil {
-				glog.V(0).Infof("Failed to delete node %s from indexer for migration: %v", node.Name, err)
 			}
 		} else {
 			continue

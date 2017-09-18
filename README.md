@@ -37,8 +37,5 @@ Usage of ./controller:
 
 ```bash
 git clone git@github.com:kube-node/kube-machine.git
-glide install --strip-vendor
-# vendor/github.com/docker/machine is under version control.
-# We need to make this upstream compatible
-git checkout -- vendor/
+dep ensure
 ```

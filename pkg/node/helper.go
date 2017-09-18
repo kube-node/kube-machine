@@ -1,6 +1,8 @@
 package node
 
-import "k8s.io/client-go/pkg/api/v1"
+import (
+	"k8s.io/api/core/v1"
+)
 
 func HasFinalizer(n *v1.Node, name string) bool {
 	for _, f := range n.Finalizers {

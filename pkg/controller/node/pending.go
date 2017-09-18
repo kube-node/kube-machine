@@ -1,16 +1,17 @@
 package node
 
 import (
-	"fmt"
-
 	"encoding/json"
 	"errors"
+	"fmt"
+
 	"github.com/docker/machine/libmachine/drivers"
 	"github.com/docker/machine/libmachine/state"
 	"github.com/kube-node/kube-machine/pkg/libmachine"
 	nodehelper "github.com/kube-node/kube-machine/pkg/node"
 	"github.com/kube-node/kube-machine/pkg/options"
-	"k8s.io/client-go/pkg/api/v1"
+
+	"k8s.io/api/core/v1"
 )
 
 const (

@@ -1,11 +1,12 @@
 package node
 
 import (
+	"encoding/json"
 	"fmt"
 
-	"encoding/json"
 	"github.com/kube-node/kube-machine/pkg/libmachine"
-	"k8s.io/client-go/pkg/api/v1"
+
+	"k8s.io/api/core/v1"
 )
 
 func (c *Controller) syncProvisioningNode(node *v1.Node) (changedN *v1.Node, err error) {

@@ -1,0 +1,30 @@
+required = ["k8s.io/code-generator/cmd/client-gen"]
+
+[[constraint]]
+  branch = "make-auth-provisioning-skipable"
+  name = "github.com/docker/machine"
+  source = "github.com/kubermatic/machine"
+
+[[constraint]]
+  name = "github.com/golang/glog"
+
+[[constraint]]
+  name = "github.com/spf13/pflag"
+
+[[constraint]]
+  name = "github.com/kube-node/nodeset"
+  branch = "sttts-kube-gen"
+  source = "github.com/mrIncompetent/nodeset"
+
+[[constraint]]
+  branch = "release-5.0"
+  name = "k8s.io/client-go"
+
+[[constraint]]
+  name = "k8s.io/code-generator"
+  branch = "sttts-codegen-scripts"
+  source = "github.com/sttts/code-generator"
+
+[[constraint]]
+  name = "github.com/prometheus/client_golang"
+  version = "v0.8.0"

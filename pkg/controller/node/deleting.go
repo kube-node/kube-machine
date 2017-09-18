@@ -6,8 +6,9 @@ import (
 	"github.com/golang/glog"
 	"github.com/kube-node/kube-machine/pkg/libmachine"
 	nodehelper "github.com/kube-node/kube-machine/pkg/node"
+
+	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/pkg/api/v1"
 )
 
 const (

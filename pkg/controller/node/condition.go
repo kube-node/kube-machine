@@ -4,8 +4,9 @@ import (
 	"time"
 
 	"github.com/golang/glog"
+
+	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/pkg/api/v1"
 )
 
 const (
@@ -45,7 +46,7 @@ func (c *Controller) readyConditionWorker() {
 
 		if updated {
 			glog.V(6).Infof("Updating node ready condition for %s to avoid node deletion by kube-controller-manager", node.Name)
-			_, err := c.client.Nodes().UpdateStatus(node)
+			_, err := c.client.CoreV1().Nodes().UpdateStatus(node)
 			if err != nil {
 
 				glog.V(0).Infof("Failed to update node ready condition for %s: %v", node.Name, err)

@@ -15,15 +15,16 @@ import (
 	"github.com/kube-node/kube-machine/pkg/controller"
 	"github.com/kube-node/kube-machine/pkg/controller/node"
 	"github.com/kube-node/kube-machine/pkg/nodeclass"
-	"github.com/kube-node/nodeset/pkg/client/clientset_v1alpha1"
+	nodesetclient "github.com/kube-node/nodeset/pkg/client/clientset/versioned"
 	"github.com/kube-node/nodeset/pkg/nodeset/v1alpha1"
 	flag "github.com/spf13/pflag"
+
+	"k8s.io/api/core/v1"
+	extapiclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
@@ -57,24 +58,25 @@ func main() {
 		panic(err.Error())
 	}
 
-	client := kubernetes.NewForConfigOrDie(config)
-	err = nodeclass.EnsureThirdPartyResourcesExist(client)
+	kubeClient := kubernetes.NewForConfigOrDie(config)
+	apiextensionsclientset := extapiclient.NewForConfigOrDie(config)
+
+	err = nodeclass.EnsureCustomResourceDefinitions(apiextensionsclientset)
 	if err != nil {
 		panic(err)
 	}
 
-	config.GroupVersion = &schema.GroupVersion{Version: runtime.APIVersionInternal}
-	nodesetClient := clientset_v1alpha1.NewForConfigOrDie(config)
+	nodesetClient := nodesetclient.NewForConfigOrDie(config)
 
 	nodeQueue := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
 
 	nodeIndexer, nodeInformer := cache.NewIndexerInformer(
 		&cache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
-				return client.Nodes().List(options)
+				return kubeClient.CoreV1().Nodes().List(options)
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
-				return client.Nodes().Watch(options)
+				return kubeClient.CoreV1().Nodes().Watch(options)
 			},
 		},
 		&v1.Node{},
@@ -107,10 +109,10 @@ func main() {
 	nodeClassStore, nodeClassController := cache.NewInformer(
 		&cache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
-				return nodesetClient.NodeClasses().List(options)
+				return nodesetClient.NodesetV1alpha1().NodeClasses().List(options)
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
-				return nodesetClient.NodeClasses().Watch(options)
+				return nodesetClient.NodesetV1alpha1().NodeClasses().Watch(options)
 			},
 		},
 		&v1alpha1.NodeClass{},
@@ -122,7 +124,7 @@ func main() {
 	ssh.SetDefaultClient(ssh.External)
 
 	c := node.New(
-		client,
+		kubeClient,
 		nodeQueue,
 		nodeIndexer,
 		nodeInformer,

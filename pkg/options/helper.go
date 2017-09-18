@@ -2,6 +2,7 @@ package options
 
 import (
 	"fmt"
+
 	"github.com/docker/machine/libmachine/drivers"
 	"github.com/docker/machine/libmachine/drivers/rpc"
 	"github.com/docker/machine/libmachine/mcnflag"
