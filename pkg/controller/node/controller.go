@@ -30,6 +30,7 @@ type Controller struct {
 	client               *kubernetes.Clientset
 	nodeCreateLock       *sync.Mutex
 	maxMigrationWaitTime time.Duration
+	metrics              *ControllerMetrics
 }
 
 const (
@@ -64,6 +65,7 @@ func New(
 	nodeClassStore cache.Store,
 	nodeClassController cache.Controller,
 	maxMigrationWaitTime time.Duration,
+	metrics *ControllerMetrics,
 ) controller.Interface {
 	return &Controller{
 		nodeInformer:         nodeInformer,
@@ -74,6 +76,7 @@ func New(
 		client:               client,
 		nodeCreateLock:       &sync.Mutex{},
 		maxMigrationWaitTime: maxMigrationWaitTime,
+		metrics:              metrics,
 	}
 }
 
@@ -87,6 +90,9 @@ func (c *Controller) processNextItem() bool {
 	defer c.nodeQueue.Done(key)
 
 	err := c.syncNode(key.(string))
+	if err != nil {
+		c.metrics.SyncErrors.Inc()
+	}
 
 	c.handleErr(err, key)
 	return true
@@ -133,6 +139,8 @@ func (c *Controller) syncNode(key string) error {
 	}
 	node.Annotations[phaseAnnotationKey] = phase
 
+	start := time.Now()
+
 	switch phase {
 	case phasePending:
 		node, err = c.syncPendingNode(node)
@@ -142,6 +150,10 @@ func (c *Controller) syncNode(key string) error {
 		node, err = c.syncLaunchingNode(node)
 	case phaseDeleting:
 		node, err = c.syncDeletingNode(node)
+	}
+
+	if phase != phaseRunning {
+		c.metrics.SyncSeconds.WithLabelValues(phase).Add(time.Since(start).Seconds())
 	}
 
 	if err != nil {
@@ -238,6 +250,10 @@ func (c *Controller) Run(workerCount int, stopCh chan struct{}) {
 		runtime.HandleError(errors.New("timed out waiting for caches to sync"))
 		return
 	}
+
+	wait.Forever(func() {
+		c.metrics.Nodes.Set(float64(len(c.nodeIndexer.List())))
+	}, time.Second)
 
 	for i := 0; i < workerCount; i++ {
 		go wait.Until(c.runWorker, time.Second, stopCh)

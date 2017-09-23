@@ -34,6 +34,7 @@ var kubeconfig *string = flag.String("kubeconfig", "", "Path to kubeconfig file 
 var master *string = flag.String("master", "", "The address of the Kubernetes API server (overrides any value in kubeconfig)")
 var healthListenAddress *string = flag.String("health-listen-address", ":8081", "The listen address for health checking")
 var maxMigrationWaitSeconds *int = flag.Int("max-migration-wait-seconds", 20, "Maximum time to wait for a migration until a deleted node gets deleted at cloud-provider. A migration happens if the actual kubelet registers with a different name than specified in the node resource OR when the kubelet deletes the existing node and recreates it(happens on every cloud-provider)")
+var promAddr *string = flag.String("prometheus", "0.0.0.0:8080", "The address for Prometheus")
 
 const (
 	workerCount = 25
@@ -43,6 +44,9 @@ func main() {
 	flag.CommandLine.AddGoFlagSet(goflag.CommandLine)
 	flag.Parse()
 	dlog.SetDebug(true)
+
+	metrics := node.NewControllerMetrics()
+	metrics.Serve(*promAddr)
 
 	var config *rest.Config
 	var err error
