@@ -1,6 +1,10 @@
-hash: 8117cb2a1b040fe3280dfe5a6428a234b596a39cbca4199cebc427af27738129
-updated: 2017-09-13T14:25:29.040055061+02:00
+hash: 9f6fbef95593c8ef3a89f704012b8f18cd6f1950bf51baa1bd59ae8b3158cd14
+updated: 2017-09-23T13:41:16.271897104+02:00
 imports:
+- name: github.com/beorn7/perks
+  version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
+  subpackages:
+  - quantile
 - name: github.com/codegangsta/cli
   version: 0302d3914d2a6ad61404584cdae6e6dbc9c03599
 - name: github.com/davecgh/go-spew
@@ -67,6 +71,10 @@ imports:
   - sortkeys
 - name: github.com/golang/glog
   version: 44145f04b68cf362d9c4df2182967c2275eaefed
+- name: github.com/golang/protobuf
+  version: 3c84672111d91bb5ac31719e112f9f7126a0e26e
+  subpackages:
+  - proto
 - name: github.com/google/gofuzz
   version: 44d81051d367757e1c7c6a5a86423ece9afcf63c
 - name: github.com/howeyc/gopass
@@ -76,7 +84,7 @@ imports:
 - name: github.com/juju/ratelimit
   version: 77ed1c8a01217656d2080ad51981f6e99adaa177
 - name: github.com/kube-node/nodeset
-  version: d81c87e753e7a425607a74167be3551ca43f2a08
+  version: ec0e74628bb54f960621380df75d9534dc4970f3
   subpackages:
   - pkg/client/clientset_v1alpha1
   - pkg/client/clientset_v1alpha1/scheme
@@ -88,6 +96,29 @@ imports:
   - buffer
   - jlexer
   - jwriter
+- name: github.com/matttproud/golang_protobuf_extensions
+  version: c12348ce28de40eed0136aa2b644d0ee0650e56c
+  subpackages:
+  - pbutil
+- name: github.com/prometheus/client_golang
+  version: c5b7fccd204277076155f10851dad72b76a49317
+  subpackages:
+  - prometheus
+  - prometheus/promhttp
+- name: github.com/prometheus/client_model
+  version: 6f3806018612930941127f2a7c6c453ba2c527d2
+  subpackages:
+  - go
+- name: github.com/prometheus/common
+  version: 2f17f4a9d485bf34b4bfaccc273805040e4f86c8
+  subpackages:
+  - expfmt
+  - internal/bitbucket.org/ww/goautoneg
+  - model
+- name: github.com/prometheus/procfs
+  version: e645f4e5aaa8506fc71d6edbc5c4ff02c04c46f2
+  subpackages:
+  - xfs
 - name: github.com/PuerkitoBio/purell
   version: 8a290539e2e8629dbc4e6bad948158f790ec31f4
 - name: github.com/PuerkitoBio/urlesc
@@ -139,7 +170,7 @@ imports:
 - name: gopkg.in/yaml.v2
   version: 53feefa2559fb8dfa8d81baad31be332c97d6c77
 - name: k8s.io/apimachinery
-  version: 85ace5365f33b16fc735c866a12e3c765b9700f2
+  version: 35be0db31bd6e5635ef6366708dc2b137392f6a2
   subpackages:
   - pkg/api/errors
   - pkg/api/meta

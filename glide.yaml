@@ -8,3 +8,5 @@ import:
   version: 0302d3914d2a6ad61404584cdae6e6dbc9c03599
 - package: github.com/spf13/pflag
 - package: github.com/kube-node/nodeset
+- package: github.com/prometheus/client_golang
+  version: v0.8.0

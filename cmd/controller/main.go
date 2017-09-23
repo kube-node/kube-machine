@@ -128,7 +128,8 @@ func main() {
 		nodeInformer,
 		nodeClassStore,
 		nodeClassController,
-		time.Duration(*maxMigrationWaitSeconds)*time.Second)
+		time.Duration(*maxMigrationWaitSeconds)*time.Second,
+		metrics)
 
 	stop := make(chan struct{})
 	osc := make(chan os.Signal, 2)
