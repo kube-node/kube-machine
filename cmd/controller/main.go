@@ -47,7 +47,7 @@ func main() {
 	dlog.SetDebug(true)
 
 	metrics := node.NewControllerMetrics()
-	metrics.Serve(*promAddr)
+	go metrics.Serve(*promAddr)
 
 	var config *rest.Config
 	var err error
@@ -135,7 +135,7 @@ func main() {
 
 	stop := make(chan struct{})
 	osc := make(chan os.Signal, 2)
-	signal.Notify(osc, []os.Signal{os.Interrupt, syscall.SIGTERM}...)
+	signal.Notify(osc, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-osc
 		close(stop)

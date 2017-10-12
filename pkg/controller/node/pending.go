@@ -80,7 +80,7 @@ func (c *Controller) pendingCreateInstance(node *v1.Node) (*v1.Node, error) {
 		return nil, nil
 	}
 
-	class, config, err := c.getNodeClass(node.Annotations[classAnnotationKey])
+	class, config, err := c.getNodeClass(node)
 	if err != nil {
 		return nil, fmt.Errorf("could not get nodeclass %q for node %s: %v", node.Annotations[classAnnotationKey], node.Name, err)
 	}

@@ -1,6 +1,7 @@
 package node
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,7 +13,7 @@ import (
 	"github.com/kube-node/kube-machine/pkg/nodeclass"
 	"github.com/kube-node/nodeset/pkg/nodeset/v1alpha1"
 
-	"k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/runtime"
@@ -100,7 +101,7 @@ func (c *Controller) processNextItem() bool {
 	return true
 }
 
-func (c *Controller) getNode(key string) (*v1.Node, error) {
+func (c *Controller) getNode(key string) (*corev1.Node, error) {
 	node, err := c.client.CoreV1().Nodes().Get(key, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
@@ -167,8 +168,31 @@ func (c *Controller) syncNode(key string) error {
 	return nil
 }
 
-func (c *Controller) getNodeClass(name string) (*v1alpha1.NodeClass, *nodeclass.NodeClassConfig, error) {
-	ncobj, exists, err := c.nodeClassStore.GetByKey(name)
+func (c *Controller) getNodeClassConfig(nc *v1alpha1.NodeClass) (*nodeclass.NodeClassConfig, error) {
+	var config nodeclass.NodeClassConfig
+	err := json.Unmarshal(nc.Config.Raw, &config)
+	if err != nil {
+		return nil, fmt.Errorf("could not unmarshal config from nodeclass: %v", err)
+	}
+	return &config, nil
+}
+
+func (c *Controller) getNodeClassFromAnnotationContent(node *corev1.Node) (*v1alpha1.NodeClass, *nodeclass.NodeClassConfig, error) {
+	content, err := base64.StdEncoding.DecodeString(node.Annotations[v1alpha1.NodeClassContentAnnotationKey])
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to load nodeclass content from annotation %s: %v", v1alpha1.NodeClassContentAnnotationKey, err)
+	}
+	class := &v1alpha1.NodeClass{}
+	err = json.Unmarshal(content, class)
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not unmarshal nodeclass from annotation %s content: %v", v1alpha1.NodeClassContentAnnotationKey, err)
+	}
+	config, err := c.getNodeClassConfig(class)
+	return class, config, err
+}
+
+func (c *Controller) getNodeClassFromAnnotation(node *corev1.Node) (*v1alpha1.NodeClass, *nodeclass.NodeClassConfig, error) {
+	ncobj, exists, err := c.nodeClassStore.GetByKey(node.Name)
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not fetch nodeclass from store: %v", err)
 	}
@@ -177,22 +201,25 @@ func (c *Controller) getNodeClass(name string) (*v1alpha1.NodeClass, *nodeclass.
 	}
 
 	class := ncobj.(*v1alpha1.NodeClass)
-	var config nodeclass.NodeClassConfig
-	err = json.Unmarshal(class.Config.Raw, &config)
-	if err != nil {
-		return nil, nil, fmt.Errorf("could not unmarshal config from nodeclass: %v", err)
-	}
-
-	return class, &config, nil
+	config, err := c.getNodeClassConfig(class)
+	return class, config, err
 }
 
-func (c *Controller) updateNode(originalData []byte, node *v1.Node) error {
+func (c *Controller) getNodeClass(node *corev1.Node) (*v1alpha1.NodeClass, *nodeclass.NodeClassConfig, error) {
+	//First try to load it via annotation
+	if node.Annotations[v1alpha1.NodeClassContentAnnotationKey] != "" {
+		return c.getNodeClassFromAnnotationContent(node)
+	}
+	return c.getNodeClassFromAnnotation(node)
+}
+
+func (c *Controller) updateNode(originalData []byte, node *corev1.Node) error {
 	modifiedData, err := json.Marshal(node)
 	if err != nil {
 		return err
 	}
 
-	b, err := strategicpatch.CreateTwoWayMergePatch(originalData, modifiedData, v1.Node{})
+	b, err := strategicpatch.CreateTwoWayMergePatch(originalData, modifiedData, corev1.Node{})
 	if err != nil {
 		return err
 	}
@@ -247,7 +274,7 @@ func (c *Controller) Run(workerCount int, stopCh chan struct{}) {
 		return
 	}
 
-	wait.Forever(func() {
+	go wait.Forever(func() {
 		c.metrics.Nodes.Set(float64(len(c.nodeIndexer.List())))
 	}, time.Second)
 
