@@ -13,7 +13,7 @@ required = ["k8s.io/code-generator/cmd/client-gen"]
 
 [[constraint]]
   name = "github.com/kube-node/nodeset"
-  branch = "sttts-kube-gen"
+  branch = "henrik"
   source = "github.com/mrIncompetent/nodeset"
 
 [[constraint]]
