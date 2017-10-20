@@ -192,7 +192,7 @@ func (c *Controller) getNodeClassFromAnnotationContent(node *corev1.Node) (*v1al
 }
 
 func (c *Controller) getNodeClassFromAnnotation(node *corev1.Node) (*v1alpha1.NodeClass, *nodeclass.NodeClassConfig, error) {
-	ncobj, exists, err := c.nodeClassStore.GetByKey(node.Name)
+	ncobj, exists, err := c.nodeClassStore.GetByKey(node.Annotations[v1alpha1.NodeClassNameAnnotationKey])
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not fetch nodeclass from store: %v", err)
 	}
