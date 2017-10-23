@@ -1,5 +1,5 @@
 [[constraint]]
-  branch = "make-auth-provisioning-skipable"
+  branch = "feature/remove-os-ssh-keys"
   name = "github.com/docker/machine"
   source = "github.com/kubermatic/machine"
 

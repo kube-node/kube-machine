@@ -50,10 +50,10 @@
   version = "v0.3.2"
 
 [[projects]]
-  branch = "make-auth-provisioning-skipable"
+  branch = "feature/remove-os-ssh-keys"
   name = "github.com/docker/machine"
   packages = ["commands/mcndirs","drivers/errdriver","drivers/none","libmachine/auth","libmachine/cert","libmachine/drivers","libmachine/drivers/plugin/localbinary","libmachine/drivers/rpc","libmachine/engine","libmachine/host","libmachine/log","libmachine/mcndockerclient","libmachine/mcnerror","libmachine/mcnflag","libmachine/mcnutils","libmachine/provision","libmachine/provision/pkgaction","libmachine/provision/serviceaction","libmachine/ssh","libmachine/state","libmachine/swarm","libmachine/version","libmachine/versioncmp","version"]
-  revision = "21f7b978863f9a18247c063afeb78de5a20ab6e3"
+  revision = "ad89045e5a4ae842e98ecae7768c15ce00d6ab9c"
   source = "github.com/kubermatic/machine"
 
 [[projects]]
@@ -306,6 +306,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "c4540b3b747f3a7435b2be4be907c64d9526d4eeb5e3b554eb6366570bbb9aca"
+  inputs-digest = "5af8e1851791182904be6b7b9a66bf9886b40f961830c840256441e216f2d846"
   solver-name = "gps-cdcl"
   solver-version = 1
