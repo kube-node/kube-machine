@@ -36,6 +36,22 @@ jobs:
           root: /go/src/github.com/kube-node/kube-machine
           paths:
             - .
+  build-driver:
+    docker:
+      - image: golang:1.9
+    working_directory: /go/src/github.com/docker/machine
+    steps:
+      - run:
+        - git clone https://github.com/kubermatic/machine.git /go/src/github.com/docker/machine 
+        - make build
+      - store_artifacts:
+          path: bin/docker-machine
+          destination: docker-machine
+      - run: mkdir _output && mv bin/docker-machine _output/
+      - persist_to_workspace:
+          root: /go/src/github.com/docker/machine
+          paths:
+            - .
   push-hash:
     docker:
       - image: docker:17.07.0-ce

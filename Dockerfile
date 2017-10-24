@@ -10,7 +10,7 @@ LABEL maintainer "henrik@loodse.com"
 
 RUN apt-get update && apt-get install -y ca-certificates curl openssh-server
 
-COPY --from=0 /go/src/github.com/docker/machine/bin/docker-machine /usr/local/bin/docker-machine
+ADD _output/docker-machine /usr/local/bin/docker-machine
 RUN chmod +x /usr/local/bin/docker-machine
 
 ADD https://storage.googleapis.com/docker-machine-drivers/docker-machine-driver-otc /usr/local/bin/docker-machine-driver-otc
