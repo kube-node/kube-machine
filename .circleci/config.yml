@@ -2,7 +2,7 @@ version: 2
 jobs:
   install-dependencies:
     docker:
-      - image: circleci/golang:1.8
+      - image: golang:1.9
     working_directory: /go/src/github.com/kube-node/kube-machine
     steps:
       - checkout
@@ -14,7 +14,7 @@ jobs:
             - .
   test:
     docker:
-      - image: circleci/golang:1.8
+      - image: golang:1.9
     working_directory: /go/src/github.com/kube-node/kube-machine
     steps:
       - attach_workspace:
@@ -22,7 +22,7 @@ jobs:
       - run: go test -v $(go list ./... | grep -v /vendor/)
   build:
     docker:
-      - image: circleci/golang:1.8
+      - image: golang:1.9
     working_directory: /go/src/github.com/kube-node/kube-machine
     steps:
       - attach_workspace:
@@ -38,7 +38,7 @@ jobs:
             - .
   push-hash:
     docker:
-      - image: docker:stable
+      - image: docker:17.07.0-ce
     working_directory: /go/src/github.com/kube-node/kube-machine
     steps:
       - run: apk update && apk add tar
@@ -52,7 +52,7 @@ jobs:
           docker push kubenode/kube-machine:$CIRCLE_SHA1
   push-latest:
     docker:
-      - image: docker:stable
+      - image: docker:17.07.0-ce
     working_directory: /go/src/github.com/kube-node/kube-machine
     steps:
       - run: apk update && apk add tar
@@ -66,7 +66,7 @@ jobs:
           docker push kubenode/kube-machine:latest
   push-release:
     docker:
-      - image: docker:stable
+      - image: docker:17.07.0-ce
     working_directory: /go/src/github.com/kube-node/kube-machine
     steps:
       - run: apk update && apk add tar
