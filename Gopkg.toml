@@ -1,7 +1,7 @@
 [[constraint]]
-  branch = "make-auth-provisioning-skipable"
   name = "github.com/docker/machine"
   source = "github.com/kubermatic/machine"
+  branch = "master"
 
 [[constraint]]
   name = "github.com/golang/glog"
