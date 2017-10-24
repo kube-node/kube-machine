@@ -42,19 +42,20 @@ jobs:
     working_directory: /go/src/github.com/docker/machine
     steps:
       - run:
-        - git clone https://github.com/kubermatic/machine.git /go/src/github.com/docker/machine 
-        - make build
+          command: |
+            git clone https://github.com/kubermatic/machine.git /go/src/github.com/docker/machine 
+            make build
       - store_artifacts:
           path: bin/docker-machine
           destination: docker-machine
-      - run: mkdir _output && mv bin/docker-machine _output/
+      - run: mkdir _driver && mv bin/docker-machine _driver/
       - persist_to_workspace:
           root: /go/src/github.com/docker/machine
           paths:
             - .
   push-hash:
     docker:
-      - image: docker:17.07.0-ce
+      - image: docker:stable
     working_directory: /go/src/github.com/kube-node/kube-machine
     steps:
       - run: apk update && apk add tar
@@ -68,7 +69,7 @@ jobs:
           docker push kubenode/kube-machine:$CIRCLE_SHA1
   push-latest:
     docker:
-      - image: docker:17.07.0-ce
+      - image: docker:stable
     working_directory: /go/src/github.com/kube-node/kube-machine
     steps:
       - run: apk update && apk add tar
@@ -82,7 +83,7 @@ jobs:
           docker push kubenode/kube-machine:latest
   push-release:
     docker:
-      - image: docker:17.07.0-ce
+      - image: docker:stable
     working_directory: /go/src/github.com/kube-node/kube-machine
     steps:
       - run: apk update && apk add tar
@@ -94,7 +95,6 @@ jobs:
           docker login -u $DOCKER_USER -p $DOCKER_PASS
           docker tag kubenode/kube-machine kubenode/kube-machine:$CIRCLE_TAG
           docker push kubenode/kube-machine:$CIRCLE_TAG
-
 workflows:
   version: 2
   build_and_test:
@@ -109,6 +109,12 @@ workflows:
           filters:
             tags:
               only: /v.*/
+      - build-driver:
+          requires:
+            - build
+          filters:
+            tags:
+              only: /v.*/
       - build:
           requires:
             - install-dependencies
@@ -117,13 +123,13 @@ workflows:
               only: /v.*/
       - push-hash:
           requires:
-            - build
+            - build-driver
           filters:
             tags:
               only: /v.*/
       - push-latest:
           requires:
-            - build
+            - build-driver
           filters:
             branches:
               only:
@@ -132,7 +138,7 @@ workflows:
               only: /v.*/
       - push-release:
           requires:
-            - build
+            - build-driver
           filters:
             tags:
               only: /v.*/
