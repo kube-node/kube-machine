@@ -157,6 +157,7 @@ workflows:
       - push-latest:
           requires:
             - build-driver
+            - build
           filters:
             branches:
               only:
@@ -166,6 +167,7 @@ workflows:
       - push-release:
           requires:
             - build-driver
+            - build
           filters:
             tags:
               only: /v.*/
