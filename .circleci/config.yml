@@ -1,94 +1,116 @@
 version: 2
 jobs:
-  install-dependencies:
+  checkout_code:
     docker:
-      - image: golang:1.9
+      - image: circleci/golang:1.9
     working_directory: /go/src/github.com/kube-node/kube-machine
     steps:
       - checkout
+      - save_cache:
+          key: repo-{{ .Environment.CIRCLE_SHA1 }}
+          paths:
+            - /go/src/github.com/kube-node/kube-machine
+
+  install-dependencies:
+    docker:
+      - image: circleci/golang:1.9
+    working_directory: /go/src/github.com/kube-node/kube-machine
+    steps:
+      - restore_cache:
+          key: repo-{{ .Environment.CIRCLE_SHA1 }}
       - run: go get -u github.com/golang/dep/cmd/dep
       - run: dep ensure -vendor-only
-      - persist_to_workspace:
-          root: /go/src/github.com/kube-node/kube-machine
+      - save_cache:
+          key: vendor-{{ checksum "Gopkg.lock" }}
           paths:
-            - .
+            - /go/src/github.com/kube-node/kube-machine/vendor
   test:
     docker:
-      - image: golang:1.9
+      - image: circleci/golang:1.9
     working_directory: /go/src/github.com/kube-node/kube-machine
     steps:
-      - attach_workspace:
-          at: .
-      - run: go test -v $(go list ./... | grep -v /vendor/)
+      - restore_cache:
+          key: repo-{{ .Environment.CIRCLE_SHA1 }}
+      - restore_cache:
+          key: vendor-{{ checksum "Gopkg.lock" }}
+      - run: go test ./...
+
   build:
     docker:
-      - image: golang:1.9
+      - image: circleci/golang:1.9
     working_directory: /go/src/github.com/kube-node/kube-machine
     steps:
-      - attach_workspace:
-          at: .
+      - restore_cache:
+          key: repo-{{ .Environment.CIRCLE_SHA1 }}
+      - restore_cache:
+          key: vendor-{{ checksum "Gopkg.lock" }}
       - run: go build -o node-controller cmd/controller/main.go
-      - store_artifacts:
-          path: node-controller
-          destination: node-controller
-      - run: mkdir _output && mv node-controller _output/
+      - run: mkdir _output-kube-machine && mv node-controller _output-kube-machine/
       - persist_to_workspace:
           root: /go/src/github.com/kube-node/kube-machine
           paths:
-            - .
+            - _output-kube-machine
+
   build-driver:
     docker:
-      - image: golang:1.9
+      - image: circleci/golang:1.9
     working_directory: /go/src/github.com/docker/machine
     steps:
       - run:
           command: |
             git clone https://github.com/kubermatic/machine.git /go/src/github.com/docker/machine 
             make build
-      - store_artifacts:
-          path: bin/docker-machine
-          destination: docker-machine
-      - run: mkdir _driver && mv bin/docker-machine _driver/
+      - run: mkdir _output-docker-machine && mv bin/docker-machine _output-docker-machine/
       - persist_to_workspace:
           root: /go/src/github.com/docker/machine
           paths:
-            - .
+            - _output-docker-machine/
+
   push-hash:
     docker:
       - image: docker:stable
     working_directory: /go/src/github.com/kube-node/kube-machine
     steps:
+      - restore_cache:
+          key: repo-{{ .Environment.CIRCLE_SHA1 }}
       - run: apk update && apk add tar
       - attach_workspace:
-          at: .
+          at: binaries
+      - run: ls -la
       - setup_remote_docker
       - run: |
           docker build -t kubenode/kube-machine .
           docker login -u $DOCKER_USER -p $DOCKER_PASS
           docker tag kubenode/kube-machine kubenode/kube-machine:$CIRCLE_SHA1
           docker push kubenode/kube-machine:$CIRCLE_SHA1
+
   push-latest:
     docker:
       - image: docker:stable
     working_directory: /go/src/github.com/kube-node/kube-machine
     steps:
+      - restore_cache:
+          key: repo-{{ .Environment.CIRCLE_SHA1 }}
       - run: apk update && apk add tar
       - attach_workspace:
-          at: .
+          at: binaries
       - setup_remote_docker
       - run: |
           docker build -t kubenode/kube-machine .
           docker login -u $DOCKER_USER -p $DOCKER_PASS
           docker tag kubenode/kube-machine kubenode/kube-machine:latest
           docker push kubenode/kube-machine:latest
+
   push-release:
     docker:
       - image: docker:stable
     working_directory: /go/src/github.com/kube-node/kube-machine
     steps:
+      - restore_cache:
+          key: repo-{{ .Environment.CIRCLE_SHA1 }}
       - run: apk update && apk add tar
       - attach_workspace:
-          at: .
+          at: binaries
       - setup_remote_docker
       - run: |
           docker build -t kubenode/kube-machine .
@@ -99,7 +121,13 @@ workflows:
   version: 2
   build_and_test:
     jobs:
+      - checkout_code:
+          filters:
+            tags:
+              only: /v.*/
       - install-dependencies:
+          requires:
+            - checkout_code
           filters:
             tags:
               only: /v.*/
@@ -109,21 +137,20 @@ workflows:
           filters:
             tags:
               only: /v.*/
-      - build-driver:
-          requires:
-            - build
-          filters:
-            tags:
-              only: /v.*/
       - build:
           requires:
             - install-dependencies
           filters:
             tags:
               only: /v.*/
+      - build-driver:
+          filters:
+            tags:
+              only: /v.*/
       - push-hash:
           requires:
             - build-driver
+            - build
           filters:
             tags:
               only: /v.*/
