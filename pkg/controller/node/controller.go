@@ -22,6 +22,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
+	kerrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
 type Controller struct {
@@ -112,6 +113,10 @@ func (c *Controller) getNode(key string) (*corev1.Node, error) {
 func (c *Controller) syncNode(key string) error {
 	node, err := c.getNode(key)
 	if err != nil {
+		if kerrors.IsNotFound(err) {
+			glog.V(6).Infof("Node %s got deleted", key)
+			return nil
+		}
 		glog.V(0).Infof("Failed to fetch node %s: %v", key, err)
 		return nil
 	}
