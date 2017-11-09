@@ -7,7 +7,6 @@ import (
 
 	"github.com/golang/glog"
 	nodehelper "github.com/kube-node/kube-machine/pkg/node"
-	"github.com/kube-node/nodeset/pkg/nodeset/v1alpha1"
 
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -26,11 +25,14 @@ func (c *Controller) migrateNode(srcNode, targetNode *v1.Node) error {
 	}
 	glog.V(4).Infof("Found a matching new node after %s got deleted. Migrating annotations & labels to new node %s", srcNode.Name, targetNode.Name)
 
-	//TODO: Correctly migrate labels
-	targetNode.Annotations[driverDataAnnotationKey] = srcNode.Annotations[driverDataAnnotationKey]
-	targetNode.Annotations[hostnameAnnotationKey] = srcNode.Annotations[hostnameAnnotationKey]
-	targetNode.Annotations[v1alpha1.NodeClassNameAnnotationKey] = srcNode.Annotations[v1alpha1.NodeClassNameAnnotationKey]
-	targetNode.Annotations[publicIPAnnotationKey] = srcNode.Annotations[publicIPAnnotationKey]
+
+	for k, v := range srcNode.Annotations {
+		targetNode.Annotations[k] = v
+	}
+	for k, v := range srcNode.Labels {
+		targetNode.Labels[k] = v
+	}
+	// If we migrate the node we need to set phase to running.
 	targetNode.Annotations[phaseAnnotationKey] = phaseRunning
 
 	if !nodehelper.HasFinalizer(targetNode, deleteFinalizerName) {
