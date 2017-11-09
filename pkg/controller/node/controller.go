@@ -37,12 +37,12 @@ type Controller struct {
 }
 
 const (
-	classAnnotationKey      = "node.k8s.io/node-class"
 	phaseAnnotationKey      = "node.k8s.io/state"
 	driverDataAnnotationKey = "node.k8s.io/driver-data"
-	deleteFinalizerName     = "node.k8s.io/delete"
 	publicIPAnnotationKey   = "node.k8s.io/public-ip"
 	hostnameAnnotationKey   = "node.k8s.io/hostname"
+
+	deleteFinalizerName     = "node.k8s.io/delete"
 
 	controllerLabelKey = "node.k8s.io/controller"
 	controllerName     = "kube-machine"

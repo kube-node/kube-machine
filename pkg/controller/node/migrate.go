@@ -6,6 +6,7 @@ import (
 
 	"github.com/golang/glog"
 	nodehelper "github.com/kube-node/kube-machine/pkg/node"
+	"github.com/kube-node/nodeset/pkg/nodeset/v1alpha1"
 
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -28,7 +29,7 @@ func (c *Controller) migrateNode(srcNode, targetNode *v1.Node) error {
 
 	targetNode.Annotations[driverDataAnnotationKey] = srcNode.Annotations[driverDataAnnotationKey]
 	targetNode.Annotations[hostnameAnnotationKey] = srcNode.Annotations[hostnameAnnotationKey]
-	targetNode.Annotations[classAnnotationKey] = srcNode.Annotations[classAnnotationKey]
+	targetNode.Annotations[v1alpha1.NodeClassNameAnnotationKey] = srcNode.Annotations[v1alpha1.NodeClassNameAnnotationKey]
 	targetNode.Annotations[publicIPAnnotationKey] = srcNode.Annotations[publicIPAnnotationKey]
 	targetNode.Annotations[phaseAnnotationKey] = phaseRunning
 

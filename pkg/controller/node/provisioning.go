@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/kube-node/kube-machine/pkg/libmachine"
+	"github.com/kube-node/nodeset/pkg/nodeset/v1alpha1"
 
 	"k8s.io/api/core/v1"
 )
@@ -29,7 +30,7 @@ func (c *Controller) provisionInstance(node *v1.Node) (*v1.Node, error) {
 
 	_, config, err := c.getNodeClass(node)
 	if err != nil {
-		return nil, fmt.Errorf("could not get nodeclass %q for node %s: %v", node.Annotations[classAnnotationKey], node.Name, err)
+		return nil, fmt.Errorf("could not get nodeclass %q for node %s: %v", node.Annotations[v1alpha1.NodeClassNameAnnotationKey], node.Name, err)
 	}
 
 	err = mapi.Provision(h, config)
