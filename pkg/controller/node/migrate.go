@@ -2,6 +2,7 @@ package node
 
 import (
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/golang/glog"
@@ -25,8 +26,7 @@ func (c *Controller) migrateNode(srcNode, targetNode *v1.Node) error {
 	}
 	glog.V(4).Infof("Found a matching new node after %s got deleted. Migrating annotations & labels to new node %s", srcNode.Name, targetNode.Name)
 
-	targetNode.Labels[controllerLabelKey] = controllerName
-
+	//TODO: Correctly migrate labels
 	targetNode.Annotations[driverDataAnnotationKey] = srcNode.Annotations[driverDataAnnotationKey]
 	targetNode.Annotations[hostnameAnnotationKey] = srcNode.Annotations[hostnameAnnotationKey]
 	targetNode.Annotations[v1alpha1.NodeClassNameAnnotationKey] = srcNode.Annotations[v1alpha1.NodeClassNameAnnotationKey]
@@ -50,14 +50,24 @@ func (c *Controller) waitUntilMigrationDone() {
 	}
 }
 
-func (c *Controller) findSibling(node *v1.Node) (*v1.Node, error) {
+// findForeignSibling returns a node which is the sibling of the given node
+// Necessary in case the kubelet deletes the node-controller managed node & creates a new one...
+// Then we need to migrate.
+func (c *Controller) findForeignSibling(node *v1.Node) (*v1.Node, error) {
 	nlist := c.nodeIndexer.List()
 	for _, obj := range nlist {
 		candidate := obj.(*v1.Node)
 		if candidate.UID == node.UID {
 			continue
 		}
-		if candidate.Annotations[controllerLabelKey] == controllerName {
+
+		isControllerNode, err := c.isControllerNode(candidate)
+		if err != nil {
+			glog.V(0).Infof("failed to identify if node %s belongs to this controller: %v", node.Name, err)
+			continue
+		}
+		//We really just want nodes which are not controlled by this controller
+		if isControllerNode {
 			continue
 		}
 
@@ -74,18 +84,36 @@ func (c *Controller) findSibling(node *v1.Node) (*v1.Node, error) {
 	return nil, nodeNotFoundErr
 }
 
+func (c *Controller) isControllerNode(node *v1.Node) (bool, error) {
+	class, _, err := c.getNodeClass(node)
+	if err != nil {
+		if err == noNodeClassDefinedErr {
+			return false, nil
+		}
+		return false, fmt.Errorf("failed to get nodeclass for node %s: %v", node.Name, err)
+	}
+
+	return class.NodeController == controllerName, nil
+}
+
 func (c *Controller) migrationWorker() {
 	nlist := c.nodeIndexer.List()
 	for _, obj := range nlist {
 		node := obj.(*v1.Node)
 		//Only check for nodes for this controller
-		if node.Labels[controllerLabelKey] != controllerName {
+		isControllerNode, err := c.isControllerNode(node)
+		if err != nil {
+			glog.V(0).Infof("failed to identify if node %s belongs to this controller: %v", node.Name, err)
+			continue
+		}
+		if !isControllerNode {
+			glog.V(8).Infof("Skipping node %s as the specified node-controller != %s", node.Name, controllerName)
 			continue
 		}
 
 		glog.V(8).Infof("Processing node %s for migration check", node.Name)
 
-		sibling, err := c.findSibling(node)
+		sibling, err := c.findForeignSibling(node)
 		if err != nil {
 			if err != nodeNotFoundErr {
 				glog.V(0).Infof("Failed to find a sibling for %s: %v", node.Name, err)
@@ -106,7 +134,7 @@ func (c *Controller) migrationWorker() {
 
 func (c *Controller) deleteMigrationWatcher(node *v1.Node) wait.ConditionFunc {
 	return func() (done bool, err error) {
-		newNode, err := c.findSibling(node)
+		newNode, err := c.findForeignSibling(node)
 		if err != nil {
 			if err != nodeNotFoundErr {
 				glog.V(0).Infof("Failed to fetch node %s during migration check: %v", node.Name, err)

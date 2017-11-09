@@ -44,7 +44,6 @@ const (
 
 	deleteFinalizerName     = "node.k8s.io/delete"
 
-	controllerLabelKey = "node.k8s.io/controller"
 	controllerName     = "kube-machine"
 
 	phasePending      = "pending"
@@ -59,6 +58,7 @@ const (
 
 var nodeClassNotFoundErr = errors.New("node class not found")
 var nodeNotFoundErr = errors.New("node not found")
+var noNodeClassDefinedErr = errors.New("no node class defined")
 
 func New(
 	client *kubernetes.Clientset,
@@ -116,7 +116,12 @@ func (c *Controller) syncNode(key string) error {
 		return nil
 	}
 
-	if node.Labels[controllerLabelKey] != controllerName {
+	isControllerNode, err := c.isControllerNode(node)
+	if err != nil {
+		return fmt.Errorf("failed to identify if node %s belongs to this controller: %v", node.Name, err)
+	}
+	if !isControllerNode {
+		glog.V(8).Infof("Skipping node %s as the specified node-controller != %s", node.Name, controllerName)
 		return nil
 	}
 
@@ -206,6 +211,10 @@ func (c *Controller) getNodeClassFromAnnotation(node *corev1.Node) (*v1alpha1.No
 }
 
 func (c *Controller) getNodeClass(node *corev1.Node) (*v1alpha1.NodeClass, *nodeclass.NodeClassConfig, error) {
+	if node.Annotations[v1alpha1.NodeClassContentAnnotationKey] == "" && node.Annotations[v1alpha1.NodeClassNameAnnotationKey] == "" {
+		return nil, nil, noNodeClassDefinedErr
+	}
+
 	//First try to load it via annotation
 	if node.Annotations[v1alpha1.NodeClassContentAnnotationKey] != "" {
 		return c.getNodeClassFromAnnotationContent(node)
