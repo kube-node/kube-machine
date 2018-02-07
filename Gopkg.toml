@@ -13,7 +13,6 @@
 
 [[constraint]]
   name = "github.com/kube-node/nodeset"
-  source = "github.com/kubermatic/nodeset"
   branch = "master"
 
 [[constraint]]

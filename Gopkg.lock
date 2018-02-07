@@ -226,8 +226,7 @@
     "pkg/client/clientset/versioned/typed/nodeset/v1alpha1",
     "pkg/nodeset/v1alpha1"
   ]
-  revision = "cb52b3600e091a7b72dc9fba20e9dfa7fcbe09df"
-  source = "github.com/kubermatic/nodeset"
+  revision = "6a55101a96e59a3fd67bf011061df017dcc2c22b"
 
 [[projects]]
   branch = "master"
@@ -538,6 +537,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "e1996aac0e474487d88ab3924f6e025c3f5b6773ec7c513a3620c8d20ea8c9e9"
+  inputs-digest = "b67e6c162e50e44cf36a760e3ba2e43f4c02a71bacf94fece73f6f8fd1153594"
   solver-name = "gps-cdcl"
   solver-version = 1
